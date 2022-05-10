@@ -1,34 +1,34 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import * as anchor from '@project-serum/anchor';
+import { useEffect, useMemo, useState, useCallback } from "react";
+import * as anchor from "@project-serum/anchor";
 
-import styled from 'styled-components';
-import { Container, Snackbar } from '@material-ui/core';
-import Paper from '@material-ui/core/Paper';
-import Alert from '@material-ui/lab/Alert';
-import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
-import { PublicKey, Transaction } from '@solana/web3.js';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletDialogButton } from '@solana/wallet-adapter-material-ui';
+import styled from "styled-components";
+import { Container, Snackbar } from "@material-ui/core";
+import Paper from "@material-ui/core/Paper";
+import Alert from "@material-ui/lab/Alert";
+import Grid from "@material-ui/core/Grid";
+import Typography from "@material-ui/core/Typography";
+import { PublicKey, Transaction } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletDialogButton } from "@solana/wallet-adapter-material-ui";
 import {
   awaitTransactionSignatureConfirmation,
   CandyMachineAccount,
   CANDY_MACHINE_PROGRAM,
   getCandyMachineState,
   mintOneToken,
-} from './candy-machine';
-import { AlertState, toDate, formatNumber, getAtaForMint } from './utils';
-import { MintCountdown } from './MintCountdown';
-import { MintButton } from './MintButton';
-import { GatewayProvider } from '@civic/solana-gateway-react';
-import { sendTransaction } from './connection';
+} from "./candy-machine";
+import { AlertState, toDate, formatNumber, getAtaForMint } from "./utils";
+import { MintCountdown } from "./MintCountdown";
+import { MintButton } from "./MintButton";
+import { GatewayProvider } from "@civic/solana-gateway-react";
+import { sendTransaction } from "./connection";
 
 const ConnectButton = styled(WalletDialogButton)`
   width: 100%;
   height: 60px;
   margin-top: 10px;
   margin-bottom: 5px;
-  background: linear-gradient(180deg, #604ae5 0%, #813eee 100%);
+  background: linear-gradient(#7fff2f 0%, #2fb62f 100%);
   color: white;
   font-size: 16px;
   font-weight: bold;
@@ -48,7 +48,7 @@ const Home = (props: HomeProps) => {
   const [candyMachine, setCandyMachine] = useState<CandyMachineAccount>();
   const [alertState, setAlertState] = useState<AlertState>({
     open: false,
-    message: '',
+    message: "",
     severity: undefined,
   });
   const [isActive, setIsActive] = useState(false);
@@ -89,7 +89,7 @@ const Home = (props: HomeProps) => {
         const cndy = await getCandyMachineState(
           anchorWallet,
           props.candyMachineId,
-          props.connection,
+          props.connection
         );
         console.log(getCountdownDate(cndy));
         let active =
@@ -118,13 +118,13 @@ const Home = (props: HomeProps) => {
           }
           // retrieves the whitelist token
           const mint = new anchor.web3.PublicKey(
-            cndy.state.whitelistMintSettings.mint,
+            cndy.state.whitelistMintSettings.mint
           );
           const token = (await getAtaForMint(mint, anchorWallet.publicKey))[0];
 
           try {
             const balance = await props.connection.getTokenAccountBalance(
-              token,
+              token
             );
             let valid = parseInt(balance.value.amount) > 0;
             // only whitelist the user if the balance > 0
@@ -136,7 +136,7 @@ const Home = (props: HomeProps) => {
             if (cndy.state.isWhitelistOnly) {
               active = false;
             }
-            console.log('There was a problem fetching whitelist token balance');
+            console.log("There was a problem fetching whitelist token balance");
             console.log(e);
           }
         }
@@ -154,7 +154,7 @@ const Home = (props: HomeProps) => {
         if (cndy?.state.endSettings?.endSettingType.amount) {
           let limit = Math.min(
             cndy.state.endSettings.number.toNumber(),
-            cndy.state.itemsAvailable,
+            cndy.state.itemsAvailable
           );
           if (cndy.state.itemsRedeemed < limit) {
             setItemsRemaining(limit - cndy.state.itemsRedeemed);
@@ -174,7 +174,7 @@ const Home = (props: HomeProps) => {
         setIsPresale((cndy.state.isPresale = presale));
         setCandyMachine(cndy);
       } catch (e) {
-        console.log('There was a problem fetching Candy Machine state');
+        console.log("There was a problem fetching Candy Machine state");
         console.log(e);
       }
     }
@@ -182,19 +182,19 @@ const Home = (props: HomeProps) => {
 
   const onMint = async (
     beforeTransactions: Transaction[] = [],
-    afterTransactions: Transaction[] = [],
+    afterTransactions: Transaction[] = []
   ) => {
     try {
       setIsUserMinting(true);
-      document.getElementById('#identity')?.click();
+      document.getElementById("#identity")?.click();
       if (wallet.connected && candyMachine?.program && wallet.publicKey) {
         let mintOne = await mintOneToken(
           candyMachine,
           wallet.publicKey,
           beforeTransactions,
-          afterTransactions,
+          afterTransactions
         );
-
+        console.log("mintone " + mintOne);
         const mintTxId = mintOne[0];
 
         let status: any = { err: true };
@@ -203,10 +203,10 @@ const Home = (props: HomeProps) => {
             mintTxId,
             props.txTimeout,
             props.connection,
-            true,
+            true
           );
         }
-
+        console.log(status);
         if (status && !status.err) {
           // manual update since the refresh might not detect
           // the change immediately
@@ -216,26 +216,27 @@ const Home = (props: HomeProps) => {
           candyMachine.state.isSoldOut = remaining === 0;
           setAlertState({
             open: true,
-            message: 'Congratulations! Mint succeeded!',
-            severity: 'success',
+            message: "Congratulations! Mint succeeded!",
+            severity: "success",
           });
         } else {
           setAlertState({
             open: true,
-            message: 'Mint failed! Please try again!',
-            severity: 'error',
+            message: "Mint failed! Please try again!",
+            severity: "error",
           });
         }
       }
     } catch (error: any) {
-      let message = error.msg || 'Minting failed! Please try again!';
+      console.log("ERROR");
+      let message = error.msg || "Minting failed! Please try again!";
       if (!error.msg) {
         if (!error.message) {
-          message = 'Transaction Timeout! Please try again.';
-        } else if (error.message.indexOf('0x137')) {
+          message = "Transaction Timeout! Please try again.";
+        } else if (error.message.indexOf("0x137")) {
           console.log(error);
           message = `SOLD OUT!`;
-        } else if (error.message.indexOf('0x135')) {
+        } else if (error.message.indexOf("0x135")) {
           message = `Insufficient funds to mint. Please fund your wallet.`;
         }
       } else {
@@ -251,7 +252,7 @@ const Home = (props: HomeProps) => {
       setAlertState({
         open: true,
         message,
-        severity: 'error',
+        severity: "error",
       });
       // updates the candy machine state to reflect the lastest
       // information on chain
@@ -294,14 +295,15 @@ const Home = (props: HomeProps) => {
   ]);
 
   return (
-    <Container style={{ marginTop: 100 }}>
-      <Container maxWidth="xs" style={{ position: 'relative' }}>
+    <Container>
+      <Container maxWidth="xs" style={{ position: "relative" }}>
         <Paper
           style={{
             padding: 24,
             paddingBottom: 10,
-            backgroundColor: '#151A1F',
+            backgroundColor: "#151a1fa5",
             borderRadius: 6,
+            boxShadow: "none",
           }}
         >
           {!wallet.connected ? (
@@ -323,7 +325,7 @@ const Home = (props: HomeProps) => {
                       variant="h6"
                       color="textPrimary"
                       style={{
-                        fontWeight: 'bold',
+                        fontWeight: "bold",
                       }}
                     >
                       {`${itemsRemaining}`}
@@ -332,18 +334,18 @@ const Home = (props: HomeProps) => {
                   <Grid item xs={4}>
                     <Typography variant="body2" color="textSecondary">
                       {isWhitelistUser && discountPrice
-                        ? 'Discount Price'
-                        : 'Price'}
+                        ? "Discount Price"
+                        : "Price"}
                     </Typography>
                     <Typography
                       variant="h6"
                       color="textPrimary"
-                      style={{ fontWeight: 'bold' }}
+                      style={{ fontWeight: "bold" }}
                     >
                       {isWhitelistUser && discountPrice
                         ? `◎ ${formatNumber.asNumber(discountPrice)}`
                         : `◎ ${formatNumber.asNumber(
-                            candyMachine.state.price,
+                            candyMachine.state.price
                           )}`}
                     </Typography>
                   </Grid>
@@ -353,7 +355,7 @@ const Home = (props: HomeProps) => {
                         <MintCountdown
                           key="endSettings"
                           date={getCountdownDate(candyMachine)}
-                          style={{ justifyContent: 'flex-end' }}
+                          style={{ justifyContent: "flex-end" }}
                           status="COMPLETED"
                           onComplete={toggleMintButton}
                         />
@@ -361,7 +363,7 @@ const Home = (props: HomeProps) => {
                           variant="caption"
                           align="center"
                           display="block"
-                          style={{ fontWeight: 'bold' }}
+                          style={{ fontWeight: "bold" }}
                         >
                           TO END OF MINT
                         </Typography>
@@ -371,14 +373,14 @@ const Home = (props: HomeProps) => {
                         <MintCountdown
                           key="goLive"
                           date={getCountdownDate(candyMachine)}
-                          style={{ justifyContent: 'flex-end' }}
+                          style={{ justifyContent: "flex-end" }}
                           status={
                             candyMachine?.state?.isSoldOut ||
                             (endDate && Date.now() > endDate.getTime())
-                              ? 'COMPLETED'
+                              ? "COMPLETED"
                               : isPresale
-                              ? 'PRESALE'
-                              : 'LIVE'
+                              ? "PRESALE"
+                              : "LIVE"
                           }
                           onComplete={toggleMintButton}
                         />
@@ -390,7 +392,7 @@ const Home = (props: HomeProps) => {
                               variant="caption"
                               align="center"
                               display="block"
-                              style={{ fontWeight: 'bold' }}
+                              style={{ fontWeight: "bold" }}
                             >
                               UNTIL PUBLIC MINT
                             </Typography>
@@ -419,24 +421,24 @@ const Home = (props: HomeProps) => {
                     clusterUrl={rpcUrl}
                     handleTransaction={async (transaction: Transaction) => {
                       setIsUserMinting(true);
-                      const userMustSign = transaction.signatures.find(sig =>
-                        sig.publicKey.equals(wallet.publicKey!),
+                      const userMustSign = transaction.signatures.find((sig) =>
+                        sig.publicKey.equals(wallet.publicKey!)
                       );
                       if (userMustSign) {
                         setAlertState({
                           open: true,
-                          message: 'Please sign one-time Civic Pass issuance',
-                          severity: 'info',
+                          message: "Please sign one-time Civic Pass issuance",
+                          severity: "info",
                         });
                         try {
                           transaction = await wallet.signTransaction!(
-                            transaction,
+                            transaction
                           );
                         } catch (e) {
                           setAlertState({
                             open: true,
-                            message: 'User cancelled signing',
-                            severity: 'error',
+                            message: "User cancelled signing",
+                            severity: "error",
                           });
                           // setTimeout(() => window.location.reload(), 2000);
                           setIsUserMinting(false);
@@ -445,8 +447,8 @@ const Home = (props: HomeProps) => {
                       } else {
                         setAlertState({
                           open: true,
-                          message: 'Refreshing Civic Pass',
-                          severity: 'info',
+                          message: "Refreshing Civic Pass",
+                          severity: "info",
                         });
                       }
                       try {
@@ -456,19 +458,19 @@ const Home = (props: HomeProps) => {
                           transaction,
                           [],
                           true,
-                          'confirmed',
+                          "confirmed"
                         );
                         setAlertState({
                           open: true,
-                          message: 'Please sign minting',
-                          severity: 'info',
+                          message: "Please sign minting",
+                          severity: "info",
                         });
                       } catch (e) {
                         setAlertState({
                           open: true,
                           message:
-                            'Solana dropped the transaction, please try again',
-                          severity: 'warning',
+                            "Solana dropped the transaction, please try again",
+                          severity: "warning",
                         });
                         console.error(e);
                         // setTimeout(() => window.location.reload(), 2000);
@@ -483,7 +485,7 @@ const Home = (props: HomeProps) => {
                     <MintButton
                       candyMachine={candyMachine}
                       isMinting={isUserMinting}
-                      setIsMinting={val => setIsUserMinting(val)}
+                      setIsMinting={(val) => setIsUserMinting(val)}
                       onMint={onMint}
                       isActive={isActive || (isPresale && isWhitelistUser)}
                       rpcUrl={rpcUrl}
@@ -493,7 +495,7 @@ const Home = (props: HomeProps) => {
                   <MintButton
                     candyMachine={candyMachine}
                     isMinting={isUserMinting}
-                    setIsMinting={val => setIsUserMinting(val)}
+                    setIsMinting={(val) => setIsUserMinting(val)}
                     onMint={onMint}
                     isActive={isActive || (isPresale && isWhitelistUser)}
                     rpcUrl={rpcUrl}
@@ -506,7 +508,7 @@ const Home = (props: HomeProps) => {
             variant="caption"
             align="center"
             display="block"
-            style={{ marginTop: 7, color: 'grey' }}
+            style={{ marginTop: 7, color: "grey" }}
           >
             Powered by METAPLEX
           </Typography>
@@ -530,7 +532,7 @@ const Home = (props: HomeProps) => {
 };
 
 const getCountdownDate = (
-  candyMachine: CandyMachineAccount,
+  candyMachine: CandyMachineAccount
 ): Date | undefined => {
   if (
     candyMachine.state.isActive &&
@@ -543,7 +545,7 @@ const getCountdownDate = (
       ? candyMachine.state.goLiveDate
       : candyMachine.state.isPresale
       ? new anchor.BN(new Date().getTime() / 1000)
-      : undefined,
+      : undefined
   );
 };
 
