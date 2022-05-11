@@ -18,6 +18,7 @@ import {
   CANDY_MACHINE_PROGRAM,
   getCandyMachineState,
   mintOneToken,
+  mintMultipleToken,
 } from "./candy-machine";
 import { AlertState, toDate, formatNumber, getAtaForMint } from "./utils";
 
@@ -57,7 +58,7 @@ export interface HomeProps {
 }
 
 const Home = (props: HomeProps) => {
-  const [isDisabled, setDisabled] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
   const [mintCount, setMintCount] = useState(1);
   const [totalCost, setTotalCost] = useState(0);
   const [price, setPrice] = useState(0);
@@ -202,7 +203,7 @@ const Home = (props: HomeProps) => {
     }
   }, [anchorWallet, props.candyMachineId, props.connection]);
 
-  const onMint = async (
+  /* const onMint = async (
     beforeTransactions: Transaction[] = [],
     afterTransactions: Transaction[] = []
   ) => {
@@ -282,6 +283,175 @@ const Home = (props: HomeProps) => {
     } finally {
       setIsUserMinting(false);
     }
+  }; */
+
+  function displaySuccess(mintPublicKey: any, qty: number = 1): void {
+    let remaining = itemsRemaining! - 1;
+    setItemsRemaining(remaining);
+    setIsActive((candyMachine!.state.isActive = remaining > 0));
+    candyMachine!.state.isSoldOut = remaining === 0;
+    setAlertState({
+      open: true,
+      message: "Congratulations! Mint succeeded!",
+      severity: "success",
+    });
+  }
+
+  async function mintMany(quantityString: number) {
+    if (wallet && candyMachine?.program && wallet.publicKey) {
+      const quantity = Number(quantityString);
+      const futureBalance = (balance || 0) - price * quantity;
+      const signedTransactions: any = await mintMultipleToken(
+        candyMachine,
+        wallet.publicKey,
+        quantity
+      );
+
+      const promiseArray = [];
+
+      for (let index = 0; index < signedTransactions.length; index++) {
+        const tx = signedTransactions[index];
+        promiseArray.push(
+          awaitTransactionSignatureConfirmation(
+            tx,
+            props.txTimeout,
+            props.connection,
+            true
+          )
+        );
+      }
+
+      const allTransactionsResult = await Promise.all(promiseArray);
+      let totalSuccess = 0;
+      let totalFailure = 0;
+
+      for (let index = 0; index < allTransactionsResult.length; index++) {
+        const transactionStatus = allTransactionsResult[index];
+        if (!transactionStatus?.err) {
+          totalSuccess += 1;
+        } else {
+          totalFailure += 1;
+        }
+      }
+
+      let retry = 0;
+      if (allTransactionsResult.length > 0) {
+        let newBalance =
+          (await props.connection.getBalance(wallet.publicKey)) /
+          LAMPORTS_PER_SOL;
+
+        while (newBalance > futureBalance && retry < 20) {
+          await new Promise((f) => setTimeout(f, 1000));
+          newBalance =
+            (await props.connection.getBalance(wallet.publicKey)) /
+            LAMPORTS_PER_SOL;
+          retry++;
+          console.log(
+            "Estimated balance (" +
+              futureBalance +
+              ") not correct yet, wait a little bit and re-check. Current balance : " +
+              newBalance +
+              ", Retry " +
+              retry
+          );
+        }
+      }
+
+      setAlertState({
+        open: true,
+        message: `Congratulations! Your ${quantity} mints succeeded!`,
+        severity: "success",
+      });
+
+      /* 
+      if (totalFailure || retry === 20) {
+        setAlertState({
+          open: true,
+          message: `Some mints failed! (possibly ${totalFailure}) Wait a few minutes and check your wallet.`,
+          severity: "error",
+        });
+      }
+
+      if (totalFailure === 0 && totalSuccess === 0) {
+        setAlertState({
+          open: true,
+          message: `Mints manually cancelled.`,
+          severity: "error",
+        });
+      } */
+    }
+  }
+
+  async function mintOne() {
+    if (wallet && candyMachine?.program && wallet.publicKey) {
+      const mint = anchor.web3.Keypair.generate();
+
+      const mintTxId = (await mintOneToken(candyMachine, wallet.publicKey))[0];
+
+      let status: any = { err: true };
+      if (mintTxId) {
+        status = await awaitTransactionSignatureConfirmation(
+          mintTxId,
+          props.txTimeout,
+          props.connection,
+          true
+        );
+      }
+
+      if (!status?.err) {
+        setAlertState({
+          open: true,
+          message: "Congratulations! Mint succeeded!",
+          severity: "success",
+        });
+      }
+      // update front-end amounts
+      displaySuccess(mint.publicKey);
+      /*       } else {
+        setAlertState({
+          open: true,
+          message: "Mint failed! Please try again!",
+          severity: "error",
+        });
+       */
+    }
+  }
+
+  const startMint = async () => {
+    try {
+      setIsMinting(true);
+      if (mintCount === 1) {
+        await mintOne();
+      } else {
+        await mintMany(mintCount);
+      }
+    } catch (error: any) {
+      let message = error.msg || "Minting failed! Please try again!";
+      if (!error.msg) {
+        if (!error.message) {
+          message = "Transaction Timeout! Please try again.";
+        } else if (error.message.indexOf("0x138")) {
+        } else if (error.message.indexOf("0x137")) {
+          message = `SOLD OUT!`;
+        } else if (error.message.indexOf("0x135")) {
+          message = `Insufficient funds to mint. Please fund your wallet.`;
+        }
+      } else {
+        if (error.code === 311) {
+          message = `SOLD OUT!`;
+        } else if (error.code === 312) {
+          message = `Minting period hasn't started yet.`;
+        }
+      }
+
+      setAlertState({
+        open: true,
+        message,
+        severity: "error",
+      });
+    } finally {
+      setIsMinting(false);
+    }
   };
 
   const toggleMintButton = () => {
@@ -314,7 +484,9 @@ const Home = (props: HomeProps) => {
     props.candyMachineId,
     props.connection,
     refreshCandyMachineState,
+    balance,
   ]);
+
   useEffect(() => {
     (async () => {
       if (wallet?.publicKey) {
@@ -366,22 +538,23 @@ const Home = (props: HomeProps) => {
                     justifyContent="center"
                     wrap="nowrap"
                   >
-                    <Grid item xs={7}>
-                      <Typography variant="body2" color="textSecondary">
-                        Remaining
-                      </Typography>
-                      <Typography
-                        variant="h6"
-                        color="textPrimary"
-                        style={{
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {`${itemsRemaining}`} /{" "}
-                        {candyMachine.state.itemsAvailable}
-                      </Typography>
-                    </Grid>
-
+                    {isActive && endDate && Date.now() < endDate.getTime() && (
+                      <Grid item xs={7}>
+                        <Typography variant="body2" color="textSecondary">
+                          Remaining
+                        </Typography>
+                        <Typography
+                          variant="h6"
+                          color="textPrimary"
+                          style={{
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {`${itemsRemaining}`} /{" "}
+                          {candyMachine.state.itemsAvailable}
+                        </Typography>
+                      </Grid>
+                    )}
                     <Grid item xs={5}>
                       {isActive && endDate && Date.now() < endDate.getTime() ? (
                         <>
@@ -434,39 +607,52 @@ const Home = (props: HomeProps) => {
                       )}
                     </Grid>
                   </Grid>
-                  <Grid
-                    container
-                    style={{ marginTop: "10px", alignContent: "center" }}
-                  >
-                    <Grid item xs={7}>
-                      <Typography variant="body2" color="textSecondary">
-                        {isWhitelistUser && discountPrice
-                          ? "Discount Price"
-                          : "*Price"}
-                      </Typography>
-                      <Typography
-                        variant="h6"
-                        color="textPrimary"
-                        style={{ fontWeight: "bold" }}
+                  {!candyMachine?.state?.isSoldOut &&
+                    isActive &&
+                    endDate &&
+                    Date.now() < endDate.getTime() && (
+                      <Grid
+                        container
+                        style={{ marginTop: "10px", alignContent: "center" }}
                       >
-                        {isWhitelistUser && discountPrice
-                          ? `◎ ${formatNumber.asNumber(discountPrice)}`
-                          : `◎ ${totalCost}`}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={5}>
-                      <Typography variant="body2" color="textSecondary">
-                        {"Amount"}
-                      </Typography>
-                      <NFTcounter
-                        disabled={isDisabled}
-                        remainingNFTs={itemsRemaining!}
-                        price={price}
-                        setMintCount={setMintCount}
-                        setTotalCost={setTotalCost}
-                      />
-                    </Grid>
-                  </Grid>
+                        <Grid item xs={7}>
+                          <Typography variant="body2" color="textSecondary">
+                            {isWhitelistUser && discountPrice
+                              ? "Discount Price"
+                              : "*Price"}
+                          </Typography>
+                          <Typography
+                            variant="h6"
+                            color="textPrimary"
+                            style={{ fontWeight: "bold" }}
+                          >
+                            {isWhitelistUser && discountPrice
+                              ? `◎ ${formatNumber.asNumber(discountPrice)}`
+                              : `◎ ${totalCost}`}
+                          </Typography>
+                        </Grid>
+
+                        <Grid item xs={5}>
+                          <Typography variant="body2" color="textSecondary">
+                            {"Amount"}
+                          </Typography>
+                          <NFTcounter
+                            remainingNFTs={itemsRemaining!}
+                            price={price}
+                            setMintCount={setMintCount}
+                            setTotalCost={setTotalCost}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography
+                            variant="caption"
+                            style={{ color: "grey" }}
+                          >
+                            {"*Estimated total cost - fees included"}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    )}
                 </>
               )}
               <MintContainer>
@@ -544,7 +730,7 @@ const Home = (props: HomeProps) => {
                         setIsUserMinting(false);
                         throw e;
                       }
-                      await onMint();
+                      await startMint();
                     }}
                     broadcastTransaction={false}
                     options={{ autoShowModal: false }}
@@ -553,7 +739,7 @@ const Home = (props: HomeProps) => {
                       candyMachine={candyMachine}
                       isMinting={isUserMinting}
                       setIsMinting={(val) => setIsUserMinting(val)}
-                      onMint={onMint}
+                      onMint={startMint}
                       isActive={isActive || (isPresale && isWhitelistUser)}
                       rpcUrl={rpcUrl}
                     />
@@ -563,7 +749,7 @@ const Home = (props: HomeProps) => {
                     candyMachine={candyMachine}
                     isMinting={isUserMinting}
                     setIsMinting={(val) => setIsUserMinting(val)}
-                    onMint={onMint}
+                    onMint={startMint}
                     isActive={isActive || (isPresale && isWhitelistUser)}
                     rpcUrl={rpcUrl}
                   />
@@ -571,14 +757,14 @@ const Home = (props: HomeProps) => {
               </MintContainer>
             </>
           )}
-          <Typography
+          {/* <Typography
             variant="caption"
             align="center"
             display="block"
             style={{ marginTop: 7, color: "grey" }}
           >
             Powered by METAPLEX
-          </Typography>
+          </Typography> */}
         </Paper>
       </Container>
 

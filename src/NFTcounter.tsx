@@ -2,8 +2,8 @@ import styled from "styled-components";
 import { useEffect, useState } from "react";
 import Grid from "@material-ui/core/Grid";
 export const Minus = styled.button`
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   font-size: 1.3em;
   font-weight: bold;
   line-height: 0.5px;
@@ -54,13 +54,11 @@ export const NumericField = styled.input`
 `;
 
 export const NFTcounter = ({
-  disabled,
   remainingNFTs,
   setTotalCost,
   setMintCount,
   price,
 }: {
-  disabled: boolean;
   remainingNFTs: number;
   setTotalCost: any;
   setMintCount: any;
@@ -115,9 +113,7 @@ export const NFTcounter = ({
   return (
     <Grid container spacing={1}>
       <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
-        <Minus disabled={disabled} onClick={() => decrementValue()}>
-          -
-        </Minus>
+        <Minus onClick={() => decrementValue()}>-</Minus>
       </Grid>
       <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
         <NumericField
@@ -131,9 +127,7 @@ export const NFTcounter = ({
         />
       </Grid>
       <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
-        <Plus disabled={disabled} onClick={() => incrementValue()}>
-          +
-        </Plus>
+        <Plus onClick={() => incrementValue()}>+</Plus>
       </Grid>
     </Grid>
   );
