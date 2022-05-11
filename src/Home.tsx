@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import * as anchor from "@project-serum/anchor";
-
+import { WalletMultiButton } from "@solana/wallet-adapter-material-ui";
 import styled from "styled-components";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { Container, Snackbar } from "@material-ui/core";
 import Paper from "@material-ui/core/Paper";
 import Alert from "@material-ui/lab/Alert";
 import Grid from "@material-ui/core/Grid";
 import Typography from "@material-ui/core/Typography";
+
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletDialogButton } from "@solana/wallet-adapter-material-ui";
@@ -18,6 +20,7 @@ import {
   mintOneToken,
 } from "./candy-machine";
 import { AlertState, toDate, formatNumber, getAtaForMint } from "./utils";
+
 import { MintCountdown } from "./MintCountdown";
 import { MintButton } from "./MintButton";
 import { GatewayProvider } from "@civic/solana-gateway-react";
@@ -44,6 +47,7 @@ export interface HomeProps {
 }
 
 const Home = (props: HomeProps) => {
+  const [balance, setBalance] = useState(0);
   const [isUserMinting, setIsUserMinting] = useState(false);
   const [candyMachine, setCandyMachine] = useState<CandyMachineAccount>();
   const [alertState, setAlertState] = useState<AlertState>({
@@ -84,7 +88,7 @@ const Home = (props: HomeProps) => {
     }
 
     if (props.candyMachineId) {
-      //console.log(wallet.publicKey?.toBase58());
+      console.log(wallet.publicKey?.toBase58());
       try {
         const cndy = await getCandyMachineState(
           anchorWallet,
@@ -294,9 +298,36 @@ const Home = (props: HomeProps) => {
     refreshCandyMachineState,
   ]);
 
+  useEffect(() => {
+    (async () => {
+      if (wallet?.publicKey) {
+        const balance = await props.connection.getBalance(wallet.publicKey);
+        setBalance(balance / LAMPORTS_PER_SOL);
+      }
+    })();
+  }, [wallet, props.connection]);
+
   return (
     <Container>
       <Container maxWidth="xs" style={{ position: "relative" }}>
+        {wallet.connected && (
+          <Paper
+            style={{
+              padding: 24,
+              backgroundColor: "#151a1fa5",
+              borderRadius: 6,
+              boxShadow: "none",
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <WalletMultiButton />
+            <Typography variant="body2" style={{ marginLeft: "20px" }}>
+              BALANCE: <b>{balance.toFixed(5)}</b> SOL
+            </Typography>
+          </Paper>
+        )}
         <Paper
           style={{
             padding: 24,
