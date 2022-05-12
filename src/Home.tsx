@@ -7,8 +7,9 @@ import { Container, Snackbar } from "@material-ui/core";
 import Paper from "@material-ui/core/Paper";
 import Alert from "@material-ui/lab/Alert";
 import Grid from "@material-ui/core/Grid";
+import Box from "@material-ui/core/Box";
 import Typography from "@material-ui/core/Typography";
-
+import { Connection, programs } from "@metaplex/js";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletDialogButton } from "@solana/wallet-adapter-material-ui";
@@ -21,13 +22,19 @@ import {
   mintMultipleToken,
 } from "./candy-machine";
 import { AlertState, toDate, formatNumber, getAtaForMint } from "./utils";
-
+import ImageList from "@material-ui/core/ImageList";
+import ImageListItem from "@material-ui/core/ImageListItem";
 import { MintCountdown } from "./MintCountdown";
 import { MintButton } from "./MintButton";
 import { GatewayProvider } from "@civic/solana-gateway-react";
 import { sendTransaction } from "./connection";
 import { NFTcounter } from "./NFTcounter";
-import { isDisabled } from "@civic/solana-gateway-react/dist/esm/button/IdentityButton.utils";
+import { getDerivationPath } from "@solana/wallet-adapter-ledger";
+import { async } from "q";
+import axios from "axios";
+const {
+  metadata: { Metadata },
+} = programs;
 const ConnectButton = styled(WalletDialogButton)`
   width: 100%;
   height: 60px;
@@ -58,6 +65,7 @@ export interface HomeProps {
 }
 
 const Home = (props: HomeProps) => {
+  const [nftsMintedByOwner, setNFTs] = useState<string[]>([]);
   const [isMinting, setIsMinting] = useState(false);
   const [mintCount, setMintCount] = useState(1);
   const [totalCost, setTotalCost] = useState(0);
@@ -103,7 +111,6 @@ const Home = (props: HomeProps) => {
     }
 
     if (props.candyMachineId) {
-      console.log(wallet.publicKey?.toBase58());
       try {
         const cndy = await getCandyMachineState(
           anchorWallet,
@@ -201,8 +208,38 @@ const Home = (props: HomeProps) => {
         console.log(e);
       }
     }
+    collectNftsFromWallet();
   }, [anchorWallet, props.candyMachineId, props.connection]);
 
+  const getNFTs = async (uri: any) => {
+    let response;
+    try {
+      response = await axios.get(uri);
+    } catch (error) {
+      console.log(error);
+    }
+    let image: string = response?.data.image;
+    console.log(image);
+    return image;
+  };
+
+  const collectNftsFromWallet = async () => {
+    const nftsmetadata = await Metadata.findDataByOwner(
+      props.connection,
+      anchorWallet!.publicKey
+    );
+
+    let NFTsfromCollection = Promise.all(
+      nftsmetadata
+        .filter(
+          (nft) => nft.data.name.includes("Treedom") && nft.data.symbol == "T"
+        )
+        .map((nftData) => getNFTs(nftData.data.uri))
+    ).then((value) => {
+      return value;
+    });
+    setNFTs(await NFTsfromCollection);
+  };
   /* const onMint = async (
     beforeTransactions: Transaction[] = [],
     afterTransactions: Transaction[] = []
@@ -500,22 +537,65 @@ const Home = (props: HomeProps) => {
     <Container>
       <Container maxWidth="xs" style={{ position: "relative" }}>
         {wallet.connected && (
-          <Paper
-            style={{
-              padding: 24,
-              backgroundColor: "#151a1fa5",
-              borderRadius: 6,
-              boxShadow: "none",
-              display: "flex",
-              alignItems: "center",
-              marginBottom: "20px",
-            }}
-          >
-            <WalletMultiButton />
-            <Typography variant="body2" style={{ marginLeft: "20px" }}>
-              BALANCE: <b>{balance.toFixed(5)}</b> SOL
-            </Typography>
-          </Paper>
+          <>
+            <Paper
+              style={{
+                padding: 24,
+                backgroundColor: "#151a1fa5",
+                borderRadius: 6,
+                boxShadow: "none",
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "20px",
+              }}
+            >
+              <WalletMultiButton />
+              <Typography variant="body2" style={{ marginLeft: "20px" }}>
+                BALANCE: <b>{balance.toFixed(5)}</b> SOL
+              </Typography>
+            </Paper>
+            <Paper
+              style={{
+                marginTop: "10px",
+                marginBottom: "20px",
+                padding: "10px",
+                backgroundColor: "#151a1fa5",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+              }}
+            >
+              <Typography
+                variant="body2"
+                style={{
+                  textAlign: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                MY NFTS FROM COLLECTION
+              </Typography>
+              <Container
+                style={{
+                  alignContent: "space-between",
+                  maxHeight: "400px",
+                  overflowY: "scroll",
+                  width: "100%",
+                }}
+              >
+                {nftsMintedByOwner.map((nft) => (
+                  <Box>
+                    <img
+                      src={nft}
+                      width="100%"
+                      height="auto"
+                      loading="lazy"
+                      style={{ borderRadius: "20px" }}
+                    />
+                  </Box>
+                ))}
+              </Container>
+            </Paper>
+          </>
         )}
         <Paper
           style={{
