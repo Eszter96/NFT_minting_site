@@ -95,6 +95,7 @@ export const awaitTransactionSignatureConfirmation = async (
           const signatureStatuses = await connection.getSignatureStatuses([
             txid,
           ]);
+          await sleep(2000);
           status = signatureStatuses && signatureStatuses.value[0];
           if (!done) {
             if (!status) {
