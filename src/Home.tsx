@@ -3,11 +3,13 @@ import * as anchor from "@project-serum/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-material-ui";
 import styled from "styled-components";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { Container, Snackbar } from "@material-ui/core";
+import { Container, DialogContent, Grow, Snackbar } from "@material-ui/core";
 import Paper from "@material-ui/core/Paper";
 import Alert from "@material-ui/lab/Alert";
 import Grid from "@material-ui/core/Grid";
 import Box from "@material-ui/core/Box";
+import Dialog from "@material-ui/core/Dialog";
+import { DialogTitle } from "@material-ui/core";
 import Backdrop from "@material-ui/core/Backdrop";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Typography from "@material-ui/core/Typography";
@@ -40,10 +42,11 @@ import "swiper/swiper-bundle.css";
 import "swiper/swiper.scss";
 
 import { Pagination, Navigation } from "swiper";
-
+import "./Home.css";
 import { getDerivationPath } from "@solana/wallet-adapter-ledger";
 import { async } from "q";
 import axios from "axios";
+import { upperCase } from "lodash";
 const {
   metadata: { Metadata },
 } = programs;
@@ -77,7 +80,7 @@ export interface HomeProps {
 }
 
 const Home = (props: HomeProps) => {
-  const [nftsMintedByOwner, setNFTs] = useState<string[]>([]);
+  const [nftsMintedByOwner, setNFTs] = useState<any>([]);
   const [isMinting, setIsMinting] = useState(false);
   const [mintCount, setMintCount] = useState(1);
   const [totalCost, setTotalCost] = useState(0);
@@ -223,6 +226,93 @@ const Home = (props: HomeProps) => {
     collectNftsFromWallet();
   }, [anchorWallet, props.candyMachineId, props.connection]);
 
+  function getSum(array: any) {
+    let sum = 0;
+    array.map((score: number) => (sum += score));
+    return sum;
+  }
+
+  const analyseAttributes = async (attributes: any) => {
+    let traits = ["Background", "Parrots", "Monkeys", "Glasses", "Headscarf"];
+    let scores: any = {};
+    let category = "";
+    await attributes.map((nft: any) => {
+      if (traits.includes(nft.trait_type)) {
+        if (nft.value === "blank") {
+          scores[nft.trait_type] = 0;
+        } else if (nft.value.includes("R")) {
+          scores[nft.trait_type] = 2;
+        } else if (nft.value.includes("L")) {
+          scores[nft.trait_type] = 3;
+        } else {
+          scores[nft.trait_type] = 1;
+        }
+      }
+    });
+    //console.log(scores);
+    let sum = getSum(Object.values(scores));
+    if (sum === 13) {
+      category = "legendary";
+    } else if (sum === 12 && scores["Parrots"] === 3) {
+      category = "veryRare";
+    } else if (sum === 12 && scores["Headscarf"] === 3) {
+      category = "veryRare";
+    } else if (sum === 11 && scores["Background"] === 1) {
+      category = "rare";
+    } else if (sum === 11 && scores["Headscarf"] >= 2) {
+      category = "rare";
+    } else if (
+      scores["Parrots"] === 3 &&
+      scores["Headscarf"] == 3 &&
+      getSum([scores["Background"], scores["Monkeys"], scores["Glasses"]]) === 6
+    ) {
+      category = "rare";
+    } else if (scores["Glasses"] == 3 && sum - scores["Glasses"] === 12) {
+      category = "rare";
+    } else if (
+      scores["Parrots"] === 0 &&
+      scores["Monkeys"] === 0 &&
+      sum === 6
+    ) {
+      category = "rare";
+    } else if (
+      scores["Parrots"] === 3 &&
+      scores["Headscarf"] == 3 &&
+      getSum([scores["Background"], scores["Monkeys"], scores["Glasses"]]) === 4
+    ) {
+      category = "rare";
+    } else if (sum === 11 && scores["Headscarf"] === 1) {
+      category = "above average";
+    } else if (scores["Glasses"] === 3 && sum - scores["Glasses"] === 7) {
+      category = "above average";
+    } else if (scores["Headscarf"] === 3 && sum - scores["Headscarf"] === 7) {
+      category = "above average";
+    } else if (
+      sum === 10 &&
+      scores["Headscarf"] >= 2 &&
+      scores["Glasses"] >= 2
+    ) {
+      category = "above average";
+    } else if (sum === 8 && scores["Monkeys"] === 0) {
+      category = "above average";
+    } else if (sum === 7 && scores["Parrots"] === 0) {
+      category = "above average";
+    } else if (sum === 9 || sum === 10 || sum) {
+      category = "average";
+    } else if (sum === 7 || sum === 8) {
+      category = "average";
+    } else if (sum === 6) {
+      category = "average";
+    } else if (sum === 5) {
+      category = "average";
+    } else if (sum === 4) {
+      category = "average";
+    } else if (sum === 3) {
+      category = "average";
+    }
+    return { scores, category };
+  };
+
   const getNFTs = async (uri: any) => {
     let response;
     try {
@@ -230,9 +320,11 @@ const Home = (props: HomeProps) => {
     } catch (error) {
       console.log(error);
     }
+    let rarity = await analyseAttributes(response?.data.attributes);
+    console.log(rarity);
     let image: string = response?.data.image;
     console.log(image);
-    return image;
+    return { image, rarity };
   };
 
   const collectNftsFromWallet = async () => {
@@ -240,18 +332,17 @@ const Home = (props: HomeProps) => {
       props.connection,
       anchorWallet!.publicKey
     );
-    //console.log(nftsmetadata);
     let NFTsfromCollection = Promise.all(
       nftsmetadata
         .filter(
-          (nft) => nft.data.name.includes("Treedom") && nft.data.symbol == "TD"
+          (nft) =>
+            nft.data.name.includes("Treedom") && nft.data.symbol == "TDNFT"
         )
         .map((nftData) => getNFTs(nftData.data.uri))
     ).then((value) => {
       return value;
     });
     setNFTs(await NFTsfromCollection);
-    console.log("data refreshed");
   };
   /* const onMint = async (
     beforeTransactions: Transaction[] = [],
@@ -541,6 +632,17 @@ const Home = (props: HomeProps) => {
     setIsActive((candyMachine!.state.isActive = active));
   };
 
+  const [open, setOpen] = useState(false);
+  const [currentNFT, setCurrentNFT] = useState<any>();
+
+  /*const handleClose = () => {
+    setOpen(false);
+  };
+   function displayRarity(nft: any) {
+    setOpen(true);
+    setCurrentNFT(nft);
+  } */
+
   useEffect(() => {
     refreshCandyMachineState();
   }, [
@@ -562,10 +664,18 @@ const Home = (props: HomeProps) => {
 
   return (
     <>
-      <Backdrop open={loading} style={{ position: "absolute", zIndex: "4" }}>
-        <CircularProgress color="inherit" />
-      </Backdrop>
+      {/* <Dialog open={open} onClose={handleClose}>
+        <Paper>
+          <img src={currentNFT?.image} height="500px" width="500px" />
+        </Paper>
+      </Dialog> */}
       <Container>
+        <Backdrop
+          open={loading}
+          style={{ position: "absolute", height: "100%", zIndex: "4" }}
+        >
+          <CircularProgress color="inherit" />
+        </Backdrop>
         <Container maxWidth="xs" style={{ position: "relative" }}>
           {wallet.connected && (
             <>
@@ -574,7 +684,6 @@ const Home = (props: HomeProps) => {
                   padding: 24,
                   backgroundColor: "#151a1fa5",
                   borderRadius: 6,
-
                   display: "flex",
                   alignItems: "center",
                   marginBottom: "20px",
@@ -625,25 +734,132 @@ const Home = (props: HomeProps) => {
                       modules={[Pagination, Navigation]}
                       className="mySwiper"
                     >
-                      {nftsMintedByOwner.map((nft) => (
-                        <SwiperSlide>
-                          <Box
-                            style={{
-                              width: "100%",
-                              height: "120%",
-                              display: "flex",
-                              justifyContent: "center",
-                              alignItems: "center",
-                              marginBottom: "40px",
-                            }}
-                          >
+                      {nftsMintedByOwner.map((nft: any) => (
+                        <SwiperSlide key={nft.image}>
+                          <Box className="imageContainer">
                             <img
-                              src={nft}
+                              src={nft.image}
                               width="70%"
                               height="auto"
                               loading="lazy"
-                              style={{ borderRadius: "20px" }}
+                              style={{
+                                borderRadius: "20px",
+                                display: "block",
+                              }}
                             />
+                            <Paper className="rarity">
+                              <Box
+                                style={{
+                                  padding: "20px 30px 20px 30px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  justifyContent: "space-between",
+                                  width: "100%",
+                                }}
+                              >
+                                <Typography
+                                  style={{
+                                    textTransform: "uppercase",
+                                    marginBottom: "10px",
+                                    borderBottom: "1px solid whitesmoke",
+                                  }}
+                                  variant="h6"
+                                  color="textPrimary"
+                                >
+                                  {nft.rarity.category}
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="textSecondary"
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  BACKGROUND:
+                                  <b
+                                    style={{
+                                      fontSize: "1.2rem",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {nft.rarity.scores["Background"]} / 2
+                                  </b>
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="textSecondary"
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  HEADSCAFT:{" "}
+                                  <b
+                                    style={{
+                                      fontSize: "1.2rem",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {nft.rarity.scores["Headscarf"]} / 3
+                                  </b>
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="textSecondary"
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  GLASSES:{" "}
+                                  <b
+                                    style={{
+                                      fontSize: "1.2rem",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {nft.rarity.scores["Glasses"]} / 3
+                                  </b>
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="textSecondary"
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  MONKEY:{" "}
+                                  <b
+                                    style={{
+                                      fontSize: "1.2rem",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {nft.rarity.scores["Monkeys"]} / 2
+                                  </b>
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="textSecondary"
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  PARROT:{" "}
+                                  <b
+                                    style={{
+                                      fontSize: "1.2rem",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {nft.rarity.scores["Parrots"]} / 3
+                                  </b>
+                                </Typography>
+                              </Box>
+                            </Paper>
                           </Box>
                         </SwiperSlide>
                       ))}
@@ -655,8 +871,8 @@ const Home = (props: HomeProps) => {
           )}
           <Paper
             style={{
-              padding: 24,
-              paddingBottom: 10,
+              padding: 20,
+              paddingBottom: 20,
               backgroundColor: "#151a1fa5",
               borderRadius: 6,
             }}
@@ -673,8 +889,26 @@ const Home = (props: HomeProps) => {
                       justifyContent="center"
                       wrap="nowrap"
                     >
+                      {!candyMachine?.state?.isSoldOut && isActive && (
+                        <Grid item xs={4}>
+                          <Typography variant="body2" color="textSecondary">
+                            {isWhitelistUser && discountPrice
+                              ? "Discount Price"
+                              : "*Price"}
+                          </Typography>
+                          <Typography
+                            variant="h6"
+                            color="textPrimary"
+                            style={{ fontWeight: "bold" }}
+                          >
+                            {isWhitelistUser && discountPrice
+                              ? `◎ ${formatNumber.asNumber(discountPrice)}`
+                              : `◎ ${totalCost}`}
+                          </Typography>
+                        </Grid>
+                      )}
                       {isActive && (
-                        <Grid item xs={7}>
+                        <Grid item xs={4}>
                           <Typography variant="body2" color="textSecondary">
                             Remaining
                           </Typography>
@@ -690,7 +924,7 @@ const Home = (props: HomeProps) => {
                           </Typography>
                         </Grid>
                       )}
-                      <Grid item xs={5}>
+                      <Grid item xs={4}>
                         {isActive &&
                         endDate &&
                         Date.now() < endDate.getTime() ? (
@@ -745,38 +979,7 @@ const Home = (props: HomeProps) => {
                       </Grid>
                     </Grid>
                     {!candyMachine?.state?.isSoldOut && isActive && (
-                      <Grid
-                        container
-                        style={{ marginTop: "10px", alignContent: "center" }}
-                      >
-                        <Grid item xs={7}>
-                          <Typography variant="body2" color="textSecondary">
-                            {isWhitelistUser && discountPrice
-                              ? "Discount Price"
-                              : "*Price"}
-                          </Typography>
-                          <Typography
-                            variant="h6"
-                            color="textPrimary"
-                            style={{ fontWeight: "bold" }}
-                          >
-                            {isWhitelistUser && discountPrice
-                              ? `◎ ${formatNumber.asNumber(discountPrice)}`
-                              : `◎ ${totalCost}`}
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={5}>
-                          <Typography variant="body2" color="textSecondary">
-                            {"Amount"}
-                          </Typography>
-                          <NFTcounter
-                            remainingNFTs={itemsRemaining!}
-                            price={price}
-                            setMintCount={setMintCount}
-                            setTotalCost={setTotalCost}
-                          />
-                        </Grid>
+                      <Grid container>
                         <Grid item xs={12}>
                           <Typography
                             variant="caption"
@@ -789,106 +992,248 @@ const Home = (props: HomeProps) => {
                     )}
                   </>
                 )}
-                <MintContainer>
-                  {candyMachine?.state.isActive &&
-                  candyMachine?.state.gatekeeper &&
-                  wallet.publicKey &&
-                  wallet.signTransaction ? (
-                    <GatewayProvider
-                      wallet={{
-                        publicKey:
-                          wallet.publicKey ||
-                          new PublicKey(CANDY_MACHINE_PROGRAM),
-                        //@ts-ignore
-                        signTransaction: wallet.signTransaction,
-                      }}
-                      gatekeeperNetwork={
-                        candyMachine?.state?.gatekeeper?.gatekeeperNetwork
-                      }
-                      clusterUrl={rpcUrl}
-                      handleTransaction={async (transaction: Transaction) => {
-                        setIsUserMinting(true);
-                        const userMustSign = transaction.signatures.find(
-                          (sig) => sig.publicKey.equals(wallet.publicKey!)
-                        );
-                        if (userMustSign) {
-                          setAlertState({
-                            open: true,
-                            message: "Please sign one-time Civic Pass issuance",
-                            severity: "info",
-                          });
-                          try {
-                            transaction = await wallet.signTransaction!(
-                              transaction
-                            );
-                          } catch (e) {
-                            setAlertState({
-                              open: true,
-                              message: "User cancelled signing",
-                              severity: "error",
-                            });
-                            // setTimeout(() => window.location.reload(), 2000);
-                            setIsUserMinting(false);
-                            throw e;
-                          }
-                        } else {
-                          setAlertState({
-                            open: true,
-                            message: "Refreshing Civic Pass",
-                            severity: "info",
-                          });
-                        }
-                        try {
-                          await sendTransaction(
-                            props.connection,
-                            wallet,
-                            transaction,
-                            [],
-                            true,
-                            "confirmed"
-                          );
-                          setAlertState({
-                            open: true,
-                            message: "Please sign minting",
-                            severity: "info",
-                          });
-                        } catch (e) {
-                          setAlertState({
-                            open: true,
-                            message:
-                              "Solana dropped the transaction, please try again",
-                            severity: "warning",
-                          });
-                          console.error(e);
-                          // setTimeout(() => window.location.reload(), 2000);
-                          setIsUserMinting(false);
-                          throw e;
-                        }
-                        await startMint();
-                      }}
-                      broadcastTransaction={false}
-                      options={{ autoShowModal: false }}
-                    >
-                      <MintButton
-                        candyMachine={candyMachine}
-                        isMinting={isUserMinting}
-                        setIsMinting={(val) => setIsUserMinting(val)}
-                        onMint={startMint}
-                        isActive={isActive || (isPresale && isWhitelistUser)}
-                        rpcUrl={rpcUrl}
-                      />
-                    </GatewayProvider>
+                <Grid container spacing={5}>
+                  {!candyMachine?.state?.isSoldOut && isActive ? (
+                    <>
+                      <Grid item xs={5}>
+                        <Typography
+                          variant="body2"
+                          color="textSecondary"
+                          style={{ paddingBottom: "5px" }}
+                        >
+                          {"Amount"}
+                        </Typography>
+                        <NFTcounter
+                          remainingNFTs={itemsRemaining!}
+                          price={price}
+                          setMintCount={setMintCount}
+                          setTotalCost={setTotalCost}
+                        />
+                      </Grid>
+                      <Grid item xs={7}>
+                        <MintContainer>
+                          {candyMachine?.state.isActive &&
+                          candyMachine?.state.gatekeeper &&
+                          wallet.publicKey &&
+                          wallet.signTransaction ? (
+                            <GatewayProvider
+                              wallet={{
+                                publicKey:
+                                  wallet.publicKey ||
+                                  new PublicKey(CANDY_MACHINE_PROGRAM),
+                                //@ts-ignore
+                                signTransaction: wallet.signTransaction,
+                              }}
+                              gatekeeperNetwork={
+                                candyMachine?.state?.gatekeeper
+                                  ?.gatekeeperNetwork
+                              }
+                              clusterUrl={rpcUrl}
+                              handleTransaction={async (
+                                transaction: Transaction
+                              ) => {
+                                setIsUserMinting(true);
+                                const userMustSign =
+                                  transaction.signatures.find((sig) =>
+                                    sig.publicKey.equals(wallet.publicKey!)
+                                  );
+                                if (userMustSign) {
+                                  setAlertState({
+                                    open: true,
+                                    message:
+                                      "Please sign one-time Civic Pass issuance",
+                                    severity: "info",
+                                  });
+                                  try {
+                                    transaction = await wallet.signTransaction!(
+                                      transaction
+                                    );
+                                  } catch (e) {
+                                    setAlertState({
+                                      open: true,
+                                      message: "User cancelled signing",
+                                      severity: "error",
+                                    });
+                                    // setTimeout(() => window.location.reload(), 2000);
+                                    setIsUserMinting(false);
+                                    throw e;
+                                  }
+                                } else {
+                                  setAlertState({
+                                    open: true,
+                                    message: "Refreshing Civic Pass",
+                                    severity: "info",
+                                  });
+                                }
+                                try {
+                                  await sendTransaction(
+                                    props.connection,
+                                    wallet,
+                                    transaction,
+                                    [],
+                                    true,
+                                    "confirmed"
+                                  );
+                                  setAlertState({
+                                    open: true,
+                                    message: "Please sign minting",
+                                    severity: "info",
+                                  });
+                                } catch (e) {
+                                  setAlertState({
+                                    open: true,
+                                    message:
+                                      "Solana dropped the transaction, please try again",
+                                    severity: "warning",
+                                  });
+                                  console.error(e);
+                                  // setTimeout(() => window.location.reload(), 2000);
+                                  setIsUserMinting(false);
+                                  throw e;
+                                }
+                                await startMint();
+                              }}
+                              broadcastTransaction={false}
+                              options={{ autoShowModal: false }}
+                            >
+                              <MintButton
+                                candyMachine={candyMachine}
+                                isMinting={isUserMinting}
+                                setIsMinting={(val) => setIsUserMinting(val)}
+                                onMint={startMint}
+                                isActive={
+                                  isActive || (isPresale && isWhitelistUser)
+                                }
+                                rpcUrl={rpcUrl}
+                              />
+                            </GatewayProvider>
+                          ) : (
+                            <MintButton
+                              candyMachine={candyMachine}
+                              isMinting={isUserMinting}
+                              setIsMinting={(val) => setIsUserMinting(val)}
+                              onMint={startMint}
+                              isActive={
+                                isActive || (isPresale && isWhitelistUser)
+                              }
+                              rpcUrl={rpcUrl}
+                            />
+                          )}
+                        </MintContainer>
+                      </Grid>
+                    </>
                   ) : (
-                    <MintButton
-                      candyMachine={candyMachine}
-                      isMinting={isUserMinting}
-                      setIsMinting={(val) => setIsUserMinting(val)}
-                      onMint={startMint}
-                      isActive={isActive || (isPresale && isWhitelistUser)}
-                      rpcUrl={rpcUrl}
-                    />
+                    <Grid item xs={12}>
+                      <MintContainer>
+                        {candyMachine?.state.isActive &&
+                        candyMachine?.state.gatekeeper &&
+                        wallet.publicKey &&
+                        wallet.signTransaction ? (
+                          <GatewayProvider
+                            wallet={{
+                              publicKey:
+                                wallet.publicKey ||
+                                new PublicKey(CANDY_MACHINE_PROGRAM),
+                              //@ts-ignore
+                              signTransaction: wallet.signTransaction,
+                            }}
+                            gatekeeperNetwork={
+                              candyMachine?.state?.gatekeeper?.gatekeeperNetwork
+                            }
+                            clusterUrl={rpcUrl}
+                            handleTransaction={async (
+                              transaction: Transaction
+                            ) => {
+                              setIsUserMinting(true);
+                              const userMustSign = transaction.signatures.find(
+                                (sig) => sig.publicKey.equals(wallet.publicKey!)
+                              );
+                              if (userMustSign) {
+                                setAlertState({
+                                  open: true,
+                                  message:
+                                    "Please sign one-time Civic Pass issuance",
+                                  severity: "info",
+                                });
+                                try {
+                                  transaction = await wallet.signTransaction!(
+                                    transaction
+                                  );
+                                } catch (e) {
+                                  setAlertState({
+                                    open: true,
+                                    message: "User cancelled signing",
+                                    severity: "error",
+                                  });
+                                  // setTimeout(() => window.location.reload(), 2000);
+                                  setIsUserMinting(false);
+                                  throw e;
+                                }
+                              } else {
+                                setAlertState({
+                                  open: true,
+                                  message: "Refreshing Civic Pass",
+                                  severity: "info",
+                                });
+                              }
+                              try {
+                                await sendTransaction(
+                                  props.connection,
+                                  wallet,
+                                  transaction,
+                                  [],
+                                  true,
+                                  "confirmed"
+                                );
+                                setAlertState({
+                                  open: true,
+                                  message: "Please sign minting",
+                                  severity: "info",
+                                });
+                              } catch (e) {
+                                setAlertState({
+                                  open: true,
+                                  message:
+                                    "Solana dropped the transaction, please try again",
+                                  severity: "warning",
+                                });
+                                console.error(e);
+                                // setTimeout(() => window.location.reload(), 2000);
+                                setIsUserMinting(false);
+                                throw e;
+                              }
+                              await startMint();
+                            }}
+                            broadcastTransaction={false}
+                            options={{ autoShowModal: false }}
+                          >
+                            <MintButton
+                              candyMachine={candyMachine}
+                              isMinting={isUserMinting}
+                              setIsMinting={(val) => setIsUserMinting(val)}
+                              onMint={startMint}
+                              isActive={
+                                isActive || (isPresale && isWhitelistUser)
+                              }
+                              rpcUrl={rpcUrl}
+                            />
+                          </GatewayProvider>
+                        ) : (
+                          <MintButton
+                            candyMachine={candyMachine}
+                            isMinting={isUserMinting}
+                            setIsMinting={(val) => setIsUserMinting(val)}
+                            onMint={startMint}
+                            isActive={
+                              isActive || (isPresale && isWhitelistUser)
+                            }
+                            rpcUrl={rpcUrl}
+                          />
+                        )}
+                      </MintContainer>
+                    </Grid>
                   )}
-                </MintContainer>
+                </Grid>
               </>
             )}
             {/* <Typography

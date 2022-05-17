@@ -103,7 +103,12 @@ const App = () => {
             display: "flex",
           }}
         >
-          <Grid item xs={12} md={6}>
+          <Grid
+            item
+            xs={12}
+            md={6}
+            style={{ display: "flex", alignItems: "center" }}
+          >
             <Grid>
               <Grid item lg={12} md={12}>
                 <Image
@@ -111,7 +116,6 @@ const App = () => {
                   className="logo"
                   aspectRatio={1}
                   style={{
-                    marginTop: "100px",
                     paddingTop: "0px",
                     display: "flex",
                     justifyContent: "center",
@@ -201,7 +205,7 @@ const App = () => {
         <Box
           component="footer"
           sx={{
-            py: 3,
+            py: 1,
             px: 2,
             mt: "auto",
           }}
