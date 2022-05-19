@@ -6,6 +6,15 @@
   align-items: center;
   margin-bottom: 40px;
 }
+.swiper-button-prev,
+.swiper-button-next {
+  top: 45%;
+  color: #00d828;
+}
+
+.swiper-pagination-bullet {
+  background-color: #00d828;
+}
 
 .rarity {
   display: flex !important;

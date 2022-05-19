@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import Button from "@material-ui/core/Button";
-import { CandyMachineAccount } from "./candy-machine";
+import { CandyMachine } from "./candy-machine";
 import { CircularProgress } from "@material-ui/core";
 import { GatewayStatus, useGateway } from "@civic/solana-gateway-react";
 import { useEffect, useState, useRef } from "react";
@@ -41,7 +41,7 @@ export const MintButton = ({
   isActive,
 }: {
   onMint: () => Promise<void>;
-  candyMachine?: CandyMachineAccount;
+  candyMachine?: CandyMachine;
   isMinting: boolean;
   setIsMinting: (val: boolean) => void;
   isActive: boolean;
@@ -59,11 +59,6 @@ export const MintButton = ({
       return "SOLD OUT";
     } else if (isMinting) {
       return <CircularProgress />;
-    } else if (
-      candyMachine?.state.isPresale ||
-      candyMachine?.state.isWhitelistOnly
-    ) {
-      return "WHITELIST MINT";
     }
 
     return "MINT";
