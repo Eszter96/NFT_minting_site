@@ -25,5 +25,5 @@ More info on [Metaplex Docs](https://docs.metaplex.com/candy-machine-v2/getting-
 
 ------------------------
 :open_book: **Useful sources:** </br> </br>
-:link: Learn how to deploy NFTs and create a simple website: https://buildspace.so/p/ship-solana-nft-collection </br></br>
-:link: Getting inspiration for implementing the multiple minting feature from this repo: https://github.com/Fulgurus/candy-machine-v2-responsive-ui/tree/multimint
+:link: Learn how to deploy NFTs and create a simple website:</br> https://buildspace.so/p/ship-solana-nft-collection </br></br>
+:link: Getting inspiration for implementing the multiple minting feature from this repo:</br> https://github.com/Fulgurus/candy-machine-v2-responsive-ui/tree/multimint
