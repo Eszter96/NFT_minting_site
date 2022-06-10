@@ -2,7 +2,7 @@
 
 ### :sparkles: Features:
 - Connect wallet button - Candy Machine UI implementation
-- Multiwallet MUI button - Disconnect, Copy address, Connect other wallet - for more info on [Solana Labs - Wallet Adapter repository] https://github.com/solana-labs/wallet-adapter
+- Multiwallet MUI button - Disconnect, Copy address, Connect other wallet - for more info on [Solana Labs - Wallet Adapter repository](https://github.com/solana-labs/wallet-adapter)
 - Balance displayed when wallet is connected
 - NFT reveal - users can see the NFTs from the collection that are owned by them
 - Multiple NFT minting - limited to remaining elements
