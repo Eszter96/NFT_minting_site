@@ -310,7 +310,7 @@ const Home = (props: HomeProps) => {
       nftsmetadata
         .filter(
           (nft) =>
-            nft.data.name.includes("Treedom") && nft.data.symbol == "TDNF"
+            nft.data.name.includes("Treedom") && nft.data.symbol == "TDNFT"
         )
         .map((nftData) => getNFTs(nftData.data.uri))
     ).then((value) => {
@@ -643,7 +643,7 @@ const Home = (props: HomeProps) => {
                                     justifyContent: "space-between",
                                   }}
                                 >
-                                  HEADSCAFT:{" "}
+                                  HEADSCARF:{" "}
                                   <b
                                     style={{
                                       fontSize: "1.2rem",
