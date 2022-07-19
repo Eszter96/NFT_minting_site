@@ -32,6 +32,7 @@ export const Plus = styled(Minus)`
 `;
 
 export const NumericField = styled.input`
+  -moz-appearance: textfield;
   font-size: 1.3em !important;
   padding: 4px;
   max-width: 100%;

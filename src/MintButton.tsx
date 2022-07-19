@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import Button from "@material-ui/core/Button";
-import { CandyMachine } from "./candy-machine";
+import { CandyMachineAccount } from "./candy-machine";
 import { CircularProgress } from "@material-ui/core";
 import { GatewayStatus, useGateway } from "@civic/solana-gateway-react";
 import { useEffect, useState, useRef } from "react";
@@ -17,35 +17,24 @@ export const CTAButton = styled(Button)`
   height: 60px;
   margin-top: 10px;
   margin-bottom: 5px;
-  background: linear-gradient(#7fff2f 0%, #2fb62f 100%);
+  background: linear-gradient(180deg, #604ae5 0%, #813eee 100%);
   color: white;
   font-size: 16px;
   font-weight: bold;
-  opacity: 1;
-  -moz-transition: all 0.2s ease-in-out;
-  -webkit-transition: all 0.2s ease-in-out;
-  -ms-transition: all 0.2s ease-in-out;
-  -o-transition: all 0.2s ease-in-out;
-  transition: all 0.2s ease-in-out;
-  :hover {
-    opacity: 0.8;
-  }
 `; // add your own styles here
 
 export const MintButton = ({
   onMint,
   candyMachine,
   isMinting,
-  rpcUrl,
   setIsMinting,
   isActive,
 }: {
   onMint: () => Promise<void>;
-  candyMachine?: CandyMachine;
+  candyMachine?: CandyMachineAccount;
   isMinting: boolean;
   setIsMinting: (val: boolean) => void;
   isActive: boolean;
-  rpcUrl: string;
 }) => {
   const wallet = useWallet();
   const connection = useConnection();
@@ -59,6 +48,11 @@ export const MintButton = ({
       return "SOLD OUT";
     } else if (isMinting) {
       return <CircularProgress />;
+    } else if (
+      candyMachine?.state.isPresale ||
+      candyMachine?.state.isWhitelistOnly
+    ) {
+      return "WHITELIST MINT";
     }
 
     return "MINT";
@@ -99,7 +93,7 @@ export const MintButton = ({
     ) {
       setIsMinting(true);
     }
-    console.log("change: ", gatewayStatus);
+    //console.log("change: ", gatewayStatus);
   }, [setIsMinting, previousGatewayStatus, gatewayStatus]);
 
   return (
@@ -131,13 +125,8 @@ export const MintButton = ({
             if (gatewayToken?.isValid()) {
               await onMint();
             } else {
-              let endpoint = rpcUrl;
-              if (endpoint.endsWith("/")) endpoint = endpoint.slice(0, -1);
-              if (!endpoint.startsWith("https"))
-                endpoint = "https" + endpoint.slice(4);
-
               window.open(
-                `https://verify.encore.fans/?endpoint=${endpoint}&gkNetwork=${network}`,
+                `https://verify.encore.fans/?gkNetwork=${network}`,
                 "_blank"
               );
 

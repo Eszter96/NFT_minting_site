@@ -18,7 +18,7 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletDialogProvider } from "@solana/wallet-adapter-material-ui";
 import { ThemeProvider, createTheme, Paper } from "@material-ui/core";
-
+import { DEFAULT_TIMEOUT } from "./connection";
 import Typography from "@material-ui/core/Typography";
 import Container from "@material-ui/core/Container";
 import Box from "@material-ui/core/Box";
@@ -58,7 +58,7 @@ const txTimeoutInMilliseconds = 30000;
 
 const App = () => {
   const endpoint = useMemo(() => clusterApiUrl(network), []);
-
+  console.log(endpoint);
   const wallets = useMemo(
     () => [
       getPhantomWallet(),
@@ -69,23 +69,8 @@ const App = () => {
     ],
     []
   );
+  let error: string | undefined = undefined;
 
-  function Copyright() {
-    return (
-      <Typography variant="body2" style={{ textAlign: "center" }}>
-        {"Copyright © "}
-        <Typography
-          variant="body2"
-          style={{ fontWeight: "bold" }}
-          display="inline"
-        >
-          Treedom
-        </Typography>
-        {" " + new Date().getFullYear()}
-        {"."}
-      </Typography>
-    );
-  }
   return (
     <ThemeProvider theme={theme}>
       <Box
@@ -191,8 +176,10 @@ const App = () => {
                       <Home
                         candyMachineId={candyMachineId}
                         connection={connection}
-                        txTimeout={txTimeoutInMilliseconds}
+                        txTimeout={DEFAULT_TIMEOUT}
                         rpcHost={rpcHost}
+                        network={network}
+                        error={error}
                       />
                     </WalletDialogProvider>
                   </WalletProvider>
@@ -212,7 +199,18 @@ const App = () => {
           style={{ backgroundColor: "#151A1F", color: "grey" }}
         >
           <Container maxWidth="sm">
-            <Copyright />
+            <Box style={{ textAlign: "center" }}>
+              <Typography>{"Copyright © "}</Typography>
+              <Typography
+                variant="body2"
+                style={{ fontWeight: "bold" }}
+                display="inline"
+              >
+                Treedom
+              </Typography>
+              {" " + new Date().getFullYear()}
+              {"."}
+            </Box>
           </Container>
         </Box>
       </Box>
