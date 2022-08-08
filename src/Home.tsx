@@ -120,6 +120,7 @@ const Home = (props: HomeProps) => {
       !wallet.signAllTransactions ||
       !wallet.signTransaction
     ) {
+      console.log("useMemo return");
       return;
     }
 
@@ -180,74 +181,21 @@ const Home = (props: HomeProps) => {
           let cost = mintCount * (price! + solFeesEstimation);
           setTotalCost(cost);
           // duplication of state to make sure we have the right values!
-          let isWLUser = false;
           let userPrice = cndy.state.price;
 
-          // whitelist mint?
-          if (cndy?.state.whitelistMintSettings) {
-            // is it a presale mint?
-            if (
-              cndy.state.whitelistMintSettings.presale &&
-              (!cndy.state.goLiveDate ||
-                cndy.state.goLiveDate.toNumber() + shift >
-                  new Date().getTime() / 1000)
-            ) {
-              presale = true;
-            }
-            // is there a discount?
-            if (cndy.state.whitelistMintSettings.discountPrice) {
-              setDiscountPrice(cndy.state.whitelistMintSettings.discountPrice);
-              userPrice = cndy.state.whitelistMintSettings.discountPrice;
-            } else {
-              setDiscountPrice(undefined);
-              // when presale=false and discountPrice=null, mint is restricted
-              // to whitelist users only
-              if (!cndy.state.whitelistMintSettings.presale) {
-                cndy.state.isWhitelistOnly = true;
-              }
-            }
-            // retrieves the whitelist token
-            const mint = new anchor.web3.PublicKey(
-              cndy.state.whitelistMintSettings.mint
-            );
-            const token = (
-              await getAtaForMint(mint, anchorWallet.publicKey)
-            )[0];
-
-            try {
-              const balance = await connection.getTokenAccountBalance(token);
-              isWLUser = parseInt(balance.value.amount) > 0;
-              // only whitelist the user if the balance > 0
-              setIsWhitelistUser(isWLUser);
-
-              if (cndy.state.isWhitelistOnly) {
-                active = isWLUser && (presale || active);
-              }
-            } catch (e) {
-              setIsWhitelistUser(false);
-              // no whitelist user, no mint
-              if (cndy.state.isWhitelistOnly) {
-                active = false;
-              }
-              console.log(
-                "There was a problem fetching whitelist token balance"
-              );
-              console.log(e);
-            }
-          }
-          userPrice = isWLUser ? userPrice : cndy.state.price;
-
+          console.log(
+            "refreshCandyMachineState cndy?.state.tokenMint: ",
+            cndy?.state.tokenMint
+          );
           if (cndy?.state.tokenMint) {
             // retrieves the SPL token
             const mint = new anchor.web3.PublicKey(cndy.state.tokenMint);
+            // ATA ~ associated token account
             const token = (
               await getAtaForMint(mint, anchorWallet.publicKey)
             )[0];
             try {
-              const balance = await props.connection.getTokenAccountBalance(
-                token
-              );
-
+              const balance = await connection.getTokenAccountBalance(token);
               const valid = new anchor.BN(balance.value.amount).gte(userPrice);
 
               // only allow user to mint if token balance >  the user if the balance > 0
@@ -262,7 +210,7 @@ const Home = (props: HomeProps) => {
             }
           } else {
             const balance = new anchor.BN(
-              await props.connection.getBalance(anchorWallet.publicKey)
+              await connection.getBalance(anchorWallet.publicKey)
             );
             const valid = balance.gte(userPrice);
             setIsValidBalance(valid);
@@ -360,7 +308,8 @@ const Home = (props: HomeProps) => {
           hideDuration: null,
         });
       }
-      await collectNftsFromWallet();
+
+      //await collectNftsFromWallet();
     },
     [anchorWallet, props.candyMachineId, props.error, props.rpcHost]
   );
@@ -470,7 +419,7 @@ const Home = (props: HomeProps) => {
       anchorWallet!.publicKey
     );
 
-    let NFTsfromCollection = Promise.all(
+    let NFTsfromCollection = await Promise.all(
       nftsmetadata
         .filter(
           (nft) =>
@@ -481,7 +430,9 @@ const Home = (props: HomeProps) => {
       return value;
     });
 
-    setNFTs(await NFTsfromCollection);
+    console.log("collectNftsFromWallet: ", NFTsfromCollection.length);
+
+    setNFTs(NFTsfromCollection);
   };
 
   function throwConfetti(): void {
@@ -503,14 +454,14 @@ const Home = (props: HomeProps) => {
       severity: "info",
       hideDuration: 1000,
     });
-    setTimeout(function () {
+    /* setTimeout(function () {
       window.location.reload();
-    }, 10000);
+    }, 10000); */
   }
 
-  /*   function sleep(ms: number): Promise<void> {
+  function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  } */
+  }
 
   /* async function mintMany(
     quantityString: number,
@@ -697,6 +648,8 @@ const Home = (props: HomeProps) => {
           candyMachine.state.isSoldOut = remaining === 0;
           setSetupTxn(undefined);
           await refreshCandyMachineState("processed");
+          await sleep(15000);
+          await collectNftsFromWallet();
           throwConfetti();
 
           /*           setAlertState({
@@ -791,12 +744,18 @@ const Home = (props: HomeProps) => {
   } */
 
   useEffect(() => {
-    refreshCandyMachineState();
+    (async () => {
+      await refreshCandyMachineState();
+      console.log("useEffect anchorwallet: ", anchorWallet);
+      if (anchorWallet) {
+        await collectNftsFromWallet();
+      }
+    })();
   }, [
     anchorWallet,
+    refreshCandyMachineState,
     props.candyMachineId,
     props.connection,
-    refreshCandyMachineState,
     balance,
   ]);
 
