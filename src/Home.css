@@ -1,0 +1,39 @@
+.imageContainer {
+  width: 100%;
+  height: 120%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 40px;
+}
+.swiper-button-prev,
+.swiper-button-next {
+  top: 45%;
+  color: #00d828;
+}
+
+.swiper-pagination-bullet {
+  background-color: #00d828;
+}
+
+.rarity {
+  display: flex !important;
+  width: 70%;
+  height: 86.5%;
+  border-radius: 20px;
+  background-color: #000000 !important;
+  position: absolute;
+  margin-left: auto;
+  margin-right: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  opacity: 0;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.rarity:hover {
+  border-radius: 20px;
+  opacity: 0.8;
+}
