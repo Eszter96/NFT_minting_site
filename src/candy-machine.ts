@@ -373,8 +373,14 @@ export const mintOneToken = async (
   payer: anchor.web3.PublicKey,
   beforeTransactions: Transaction[] = [],
   afterTransactions: Transaction[] = [],
-  setupState?: SetupState
-): Promise<MintResult | null> => {
+  quantity: number,
+  setupState?: SetupState,
+): Promise<any> => {
+  const signersMatrix: any = [];
+  const instructionsMatrix: any = [];
+  console.log("MINTing of " + quantity + " NFTs is starting")
+  for (let index = 0 ; index < quantity; index++) {
+
   const mint = setupState?.mint ?? anchor.web3.Keypair.generate();
   const userTokenAccountAddress = (
     await getAtaForMint(mint.publicKey, payer)
@@ -386,6 +392,7 @@ export const mintOneToken = async (
 
   const candyMachineAddress = candyMachine.id;
   const remainingAccounts = [];
+
   const instructions = [];
   const signers: anchor.web3.Keypair[] = [];
   console.log("SetupState: ", setupState);
@@ -527,13 +534,13 @@ export const mintOneToken = async (
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
     })
   );
-
+  
   const [collectionPDA] = await getCollectionPDA(candyMachineAddress);
   const collectionPDAAccount =
     await candyMachine.program.provider.connection.getAccountInfo(
       collectionPDA
     );
-
+    
   if (collectionPDAAccount && candyMachine.state.retainAuthority) {
     try {
       const collectionData =
@@ -573,18 +580,18 @@ export const mintOneToken = async (
     } catch (error) {
       console.error(error);
     }
+    
+    instructionsMatrix.push(instructions);
+    signersMatrix.push(signers);
   }
-
-  const instructionsMatrix = [instructions];
-  const signersMatrix = [signers];
-
+}
   try {
-    const txns = (
+    return (
       await sendTransactions(
         candyMachine.program.provider.connection,
         candyMachine.program.provider.wallet,
-        instructionsMatrix,
-        signersMatrix,
+        instructionsMatrix!,
+        signersMatrix!,
         SequenceType.StopOnFailure,
         "singleGossip",
         () => {},
@@ -594,15 +601,16 @@ export const mintOneToken = async (
         afterTransactions
       )
     ).txs.map((t) => t.txid);
-    const mintTxn = txns[0];
-    return {
+    //const mintTxn = txns[0];
+/*     return {
       mintTxId: mintTxn,
       metadataKey: metadataAddress,
-    };
+    }; */
   } catch (e) {
     console.log(e);
   }
   return null;
+
 };
 
 export const shortenAddress = (address: string, chars = 4): string => {

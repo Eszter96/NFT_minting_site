@@ -575,7 +575,9 @@ const Home = (props: HomeProps) => {
       setTotalCost(cost);
     }
   } 
-
+  function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
   const onMint = async (
     beforeTransactions: Transaction[] = [],
     afterTransactions: Transaction[] = []
@@ -587,6 +589,7 @@ const Home = (props: HomeProps) => {
       if (wallet.connected && candyMachine?.program && wallet.publicKey) {
         let setupMint: SetupState | undefined;
         if (needTxnSplit && setupTxn === undefined) {
+       
           setAlertState({
             open: true,
             message: "Please sign account setup transaction",
@@ -630,15 +633,29 @@ const Home = (props: HomeProps) => {
           });
         }
 
+        console.log("minting is starting with amount: " + mintCount);
+        const futureBalance = (balance || 0) - (price * mintCount + solFeesEstimation);
         const mintResult = await mintOneToken(
           candyMachine,
           wallet.publicKey,
           beforeTransactions,
           afterTransactions,
+          mintCount,
           setupMint ?? setupTxn
         );
 
-        let status: any = { err: true };
+        const promiseArray: any = [];
+        for (let index = 0; index < mintResult.length; index++) {
+          const tx = mintResult[index];
+          console.log("TX: " +tx)
+          promiseArray.push(await awaitTransactionSignatureConfirmation(
+            tx,
+            props.txTimeout,
+            props.connection,
+            true
+          ))
+        }
+        /* let status: any = { err: true };
         let metadataStatus = null;
         if (mintResult) {
           status = await awaitTransactionSignatureConfirmation(
@@ -659,7 +676,7 @@ const Home = (props: HomeProps) => {
         if (status && !status.err && metadataStatus) {
           // manual update since the refresh might not detect
           // the change immediately
-          setNFTLoading(true);
+ 
           const remaining = itemsRemaining! - 1;
           setItemsRemaining(remaining);
           setIsActive((candyMachine.state.isActive = remaining > 0));
@@ -688,6 +705,72 @@ const Home = (props: HomeProps) => {
             severity: "error",
           });
           refreshCandyMachineState();
+        } */
+        const allTransactionsResult = await Promise.all(promiseArray);
+        let totalSuccess = 0;
+        let totalFailure = 0;
+        setNFTLoading(true);
+        for (
+            let index = 0;
+            index < allTransactionsResult.length;
+            index++
+        ) {
+            const transactionStatus = allTransactionsResult[index];
+            if (!transactionStatus?.err) {
+                totalSuccess += 1;
+            } else {
+                totalFailure += 1;
+            }
+        }
+        console.log("TOTALSUCCESS " + totalSuccess);
+        let retry = 0;
+        if (allTransactionsResult.length > 0) {
+             let newBalance =
+                 (await props.connection.getBalance(wallet.publicKey)) /
+                 LAMPORTS_PER_SOL;
+             console.log("NEW Balance " + newBalance + " vs Estimated " + futureBalance)
+
+             while (newBalance > futureBalance && retry < 20) {
+              await sleep(2000);
+                 newBalance =
+                     (await props.connection.getBalance(wallet.publicKey!)) /
+                     LAMPORTS_PER_SOL;
+                 retry++;
+                 console.log("Estimated balance (" + futureBalance + ") not correct yet, wait a little bit and re-check. Current balance : " + newBalance + ", Retry " + retry);
+                
+             }
+         }
+
+        if (totalSuccess && retry < 20) {
+          const remaining = itemsRemaining! - mintCount;
+          setItemsRemaining(remaining);
+          setIsActive((candyMachine.state.isActive = remaining > 0));
+          candyMachine.state.isSoldOut = remaining === 0;
+          setSetupTxn(undefined);
+          setAlertState({
+            open: true,
+            message: "Congratulations! Mint succeeded!",
+            severity: "success",
+            hideDuration: 7000,
+          });
+          refreshCandyMachineState("processed");
+            
+        }
+
+        if (totalFailure && retry === 20) {
+            setAlertState({
+                open: true,
+                message: `Some mints failed! (possibly ${totalFailure}) Wait a few minutes and check your wallet.`,
+                severity: 'error',
+            });
+        }
+
+        if (totalFailure === 0 && totalSuccess === 0) {
+            setAlertState({
+                open: true,
+                message: `Mints manually cancelled.`,
+                severity: 'error',
+            });
         }
       }
     } catch (error: any) {
@@ -697,7 +780,7 @@ const Home = (props: HomeProps) => {
           message = "Transaction timeout! Please try again.";
         } else if (error.message.indexOf("0x137")) {
           console.log(error);
-          message = `SOLD OUT!`;
+          message =  `Mints manually cancelled.`;
         } else if (error.message.indexOf("0x135")) {
           message = `Insufficient funds to mint. Please fund your wallet.`;
         }
@@ -749,7 +832,7 @@ const Home = (props: HomeProps) => {
 
   function setLoading() {
     if (waitingForNFTs) {
-      while (currentNumOfNFTs + 1 !== nftsMintedByOwner.length) {
+      while (currentNumOfNFTs + mintCount !== nftsMintedByOwner.length) {
         setNFTLoading(true);
       }
       setNFTLoading(false);
@@ -1059,7 +1142,22 @@ const Home = (props: HomeProps) => {
                 wrap="nowrap"
               >
                 {itemsRemaining! > 0 && (
-                  <>
+                  <><Grid item xs={4}>
+                  <Typography variant="body2" color="textSecondary">
+                    {isWhitelistUser && discountPrice
+                      ? "Discount Price"
+                      : "Price"}
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    color="textPrimary"
+                    style={{ fontWeight: "bold" }}
+                  >
+                    {isWhitelistUser && discountPrice
+                      ? `◎ ${formatNumber.asNumber(discountPrice)}`
+                      : `◎ ${totalCost.toFixed(3)}`}
+                  </Typography>
+                </Grid>
                     <Grid item xs={3}>
                       <Typography variant="body2" color="textSecondary">
                         Remaining
@@ -1075,22 +1173,7 @@ const Home = (props: HomeProps) => {
                         {candyMachine.state.itemsAvailable}
                       </Typography>
                     </Grid>
-                    <Grid item xs={4}>
-                      <Typography variant="body2" color="textSecondary">
-                        {isWhitelistUser && discountPrice
-                          ? "Discount Price"
-                          : "Price"}
-                      </Typography>
-                      <Typography
-                        variant="h6"
-                        color="textPrimary"
-                        style={{ fontWeight: "bold" }}
-                      >
-                        {isWhitelistUser && discountPrice
-                          ? `◎ ${formatNumber.asNumber(discountPrice)}`
-                          : `◎ ${totalCost.toFixed(3)}`}
-                      </Typography>
-                    </Grid>
+                    
                   </>
                 )}
                 <Grid item xs={5}>
@@ -1156,37 +1239,44 @@ const Home = (props: HomeProps) => {
               </Grid>
             )}
             <Grid container spacing={5}>
-            {!candyMachine?.state?.isSoldOut && isActive && (
+            {!candyMachine?.state?.isSoldOut && <>{isActive ? (
             
-              <Grid item xs={5}>
-                          <Typography
-                            variant="body2"
-                            color="textSecondary"
-                            style={{ paddingBottom: "5px" }}
-                          >
-                            {"Amount"}
-                          </Typography>
-                          <Grid container spacing={1}>
-      <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
-        <Minus onClick={() => decrementValue()}>-</Minus>
-      </Grid>
-      <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
-        <NumericField
-          type="number"
-          className="mint-qty"
-          step={1}
-          min={1}
-          max={10}
-          value={mintCount}
-          onChange={(e) => updateMintCount(e.target as any)}
-        />
-      </Grid>
-      <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
-        <Plus onClick={() => incrementValue()}>+</Plus>
-      </Grid>
+            <Grid item xs={5}>
+                        <Typography
+                          variant="body2"
+                          color="textSecondary"
+                          style={{ paddingBottom: "5px" }}
+                        >
+                          {"Amount"}
+                        </Typography>
+                        <Grid container spacing={1}>
+    <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
+      <Minus onClick={() => decrementValue()}>-</Minus>
     </Grid>
-                        </Grid>)}
-              <Grid item xs={7}>
+    <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
+      <NumericField
+        type="number"
+        className="mint-qty"
+        step={1}
+        min={1}
+        max={10}
+        value={mintCount}
+        onChange={(e) => updateMintCount(e.target as any)}
+      />
+    </Grid>
+    <Grid item xs={4} style={{ display: "flex", justifyContent: "center" }}>
+      <Plus onClick={() => incrementValue()}>+</Plus>
+    </Grid>
+  </Grid>
+                      </Grid>) : <Grid item xs={5}><Typography
+                          variant="body2"
+                          color="textSecondary"
+                          style={{ paddingBottom: "5px" }}
+                        >
+                          {"Balance is not sufficient for minting!"}
+                        </Typography></Grid>}</>
+            }
+              <Grid item xs={candyMachine?.state.isSoldOut! ? 12 : 7}>
                 <MintContainer>
                       {candyMachine?.state.isActive &&
                       candyMachine?.state.gatekeeper &&

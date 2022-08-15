@@ -137,12 +137,14 @@ const App = () => {
                     width: "50%",
                     justifyContent: "center",
                     marginLeft: "10%",
-                    textTransform: "uppercase",
+                    textTransform: "lowercase",
+                    paddingRight: "80px",
+                    fontWeight: "bold"
                   }}
                   variant="body2"
-                  align="left"
+                  align="right"
                 >
-                  Unique way of tree adoption
+                  a unique way of tree adoption
                 </Typography>
               </Grid>
               <Grid item lg={12} md={12}>
