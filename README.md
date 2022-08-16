@@ -1,4 +1,4 @@
-> **Note**
+> **Note** <br>
 > The currently **working version** is on the ```new-version``` branch, which uses the updated version of the Candy Machine UI
 
 # :tada: NFT Minting site
