@@ -1,4 +1,5 @@
 # :tada: NFT Minting site
+[Imgur](https://i.imgur.com/Cnk7WCQ.png)
 
 ### :sparkles: Features:
 - Connect wallet button - Candy Machine UI implementation
