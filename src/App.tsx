@@ -133,13 +133,12 @@ const App = () => {
               >
                 <Typography
                   style={{
-                    color: "grey",
+                    color: "white",
                     width: "50%",
                     justifyContent: "center",
                     marginLeft: "10%",
                     textTransform: "lowercase",
                     paddingRight: "80px",
-                    fontWeight: "bold"
                   }}
                   variant="body2"
                   align="right"

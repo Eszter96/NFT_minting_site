@@ -17,10 +17,19 @@ export const CTAButton = styled(Button)`
   height: 60px;
   margin-top: 10px;
   margin-bottom: 5px;
-  background: linear-gradient(180deg, #604ae5 0%, #813eee 100%);
+  background: linear-gradient(#2fb62f 0%, #7fff2f 100%);
   color: white;
   font-size: 16px;
   font-weight: bold;
+  opacity: 1;
+  -moz-transition: all 0.2s ease-in-out;
+  -webkit-transition: all 0.2s ease-in-out;
+  -ms-transition: all 0.2s ease-in-out;
+  -o-transition: all 0.2s ease-in-out;
+  transition: all 0.2s ease-in-out;
+  :hover {
+    opacity: 0.8;
+  }
 `; // add your own styles here
 
 export const MintButton = ({

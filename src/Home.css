@@ -8,12 +8,12 @@
 }
 .swiper-button-prev,
 .swiper-button-next {
-  top: 45%;
-  color: #00d828;
+  top: 45% !important;
+  color: #00d828 !important;
 }
 
 .swiper-pagination-bullet {
-  background-color: #00d828;
+  background-color: #00d828 !important;
 }
 
 .rarity {
