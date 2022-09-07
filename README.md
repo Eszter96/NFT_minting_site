@@ -23,7 +23,7 @@ More info on [Metaplex Docs](https://docs.metaplex.com/candy-machine-v2/getting-
 ## Steps to make the application work:
 1. Clone the repository
 2. Install needed packages using ```yarn install```
-3. Create an env. file in the root directory of the project with the following content:
+3. Create an .env file in the root directory of the project with the following content:
 ```
 REACT_APP_CANDY_MACHINE_ID=<Candy Machine ID generated during NFT collection deployment>
 REACT_APP_SOLANA_NETWORK=<cluster used for the deployment>
