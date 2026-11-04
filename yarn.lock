@@ -7619,8 +7619,8 @@ jiti@^1.19.1:
   resolved "https://registry.yarnpkg.com/jiti/-/jiti-1.21.0.tgz#7c97f8fe045724e136a397f7340475244156105d"
 
 joi@^17.4.0:
-  version "17.13.8"
-  resolved "https://registry.yarnpkg.com/joi/-/joi-17.13.8.tgz#92069d521eea09fd709d8abbb86b0ef02862224f"
+  version "17.13.9"
+  resolved "https://registry.yarnpkg.com/joi/-/joi-17.13.9.tgz#d763ef4b1e992a5e39fb36f2018671e489ca53e8"
   dependencies:
     "@hapi/hoek" "^9.3.0"
     "@hapi/topo" "^5.1.0"
